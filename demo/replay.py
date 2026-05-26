@@ -124,34 +124,54 @@ def load_trial(trial_dir: str, synthesize_if_empty: bool = True) -> TrialData:
 
 
 def _synthesise_from_label(label: np.ndarray, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
-    """Dev-only: fabricate probability + post-hysteresis binary from GT.
+    """Dev-only: fabricate a TCN-shaped probability + post-hysteresis binary.
 
-    Probability follows the label with a 12-frame (200 ms @ 60 Hz) onset/offset
-    smoothing and gaussian noise. Binary is the probability passed through a
-    tiny enter/exit hysteresis (entry=12, exit=6 consecutive frames > 0.5 /
-    < 0.5). The result roughly resembles what a working detector would emit.
+    Real TCN output is noisy frame-to-frame even when the model is confident,
+    so we avoid the trap of producing a flat saturated 1.0 during FoG. Instead:
+
+    - Outside FoG: small positive jitter around ~0.08, with occasional spikes.
+    - Inside FoG: oscillates around ~0.78 with realistic variance and the
+      occasional dip below 0.7 (which the hysteresis filter then absorbs).
+
+    Binary is derived by running Alex-style hysteresis (enter when prob ≥
+    th_high for `enter` frames; exit when prob ≤ th_low for `exit` frames)
+    so the visual matches the th_high / th_low reference lines on the plot.
     """
     rng = np.random.default_rng(seed)
     n = len(label)
 
-    # Smooth the GT onsets/offsets to look like a real probability rise/fall
-    target = label.astype(np.float64)
-    k = 12
-    kernel = np.ones(k) / k
-    prob = np.convolve(target, kernel, mode="same")
-    prob = np.clip(prob + rng.normal(0, 0.05, n), 0.0, 1.0)
-    # Push positive episodes a bit higher
-    prob = np.where(label == 1, np.clip(prob + 0.3, 0.0, 1.0), prob)
+    # Base noise floor — half-normal so it stays positive
+    prob = np.abs(rng.normal(0.05, 0.05, n))
 
-    thresholded = (prob >= 0.5).astype(np.int8)
-    binary = np.zeros(n, dtype=np.int8)
-    enter, exit_ = 12, 6
+    # Inside FoG, replace with a noisy band around 0.78 with a slow wobble
+    # to simulate frame-to-frame variation from a real TCN
+    t = np.arange(n) / SAMPLE_RATE_HZ
+    fog_band = (0.78
+                + 0.07 * np.sin(2 * np.pi * 0.4 * t + rng.uniform(0, 2 * np.pi))
+                + rng.normal(0, 0.10, n))
+    prob = np.where(label == 1, fog_band, prob)
+
+    # Realistic onset/offset transition: brief rise/fall over ~150 ms instead
+    # of an instant step (the model never knows the exact GT boundary)
+    transition_k = 9
+    prob = np.convolve(prob, np.ones(transition_k) / transition_k, mode="same")
+    prob = np.clip(prob, 0.0, 1.0)
+
+    # Alex-style hysteresis matching the th_high / th_low reference lines
+    binary = _hysteresis(prob, th_high=0.7, th_low=0.3, enter=12, exit_=6)
+    return prob, binary
+
+
+def _hysteresis(prob: np.ndarray, th_high: float, th_low: float,
+                enter: int, exit_: int) -> np.ndarray:
+    n = len(prob)
+    out = np.zeros(n, dtype=np.int8)
     in_fog = False
     high_run = low_run = 0
     for i in range(n):
         if in_fog:
-            binary[i] = 1
-            if thresholded[i] == 0:
+            out[i] = 1
+            if prob[i] <= th_low:
                 low_run += 1
                 if low_run >= exit_:
                     in_fog = False
@@ -159,15 +179,15 @@ def _synthesise_from_label(label: np.ndarray, seed: int = 0) -> tuple[np.ndarray
             else:
                 low_run = 0
         else:
-            if thresholded[i] == 1:
+            if prob[i] >= th_high:
                 high_run += 1
                 if high_run >= enter:
                     in_fog = True
                     high_run = 0
-                    binary[i] = 1
+                    out[i] = 1
             else:
                 high_run = 0
-    return prob, binary
+    return out
 
 
 def list_trials(trials_root: str) -> list[str]:

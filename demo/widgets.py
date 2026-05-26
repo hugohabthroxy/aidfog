@@ -84,7 +84,7 @@ class TimelinePanel(QtWidgets.QWidget):
 
         # Row 1 — Binary input
         self._p_bin = self._layout.addPlot(row=1, col=0)
-        self._p_bin.setLabel("left", "binary\ninput")
+        self._p_bin.setLabel("left", "binary\n(post-hyst.)")
         self._p_bin.setYRange(-0.1, 1.1)
         self._p_bin.setMaximumHeight(70)
         self._p_bin.hideAxis("bottom")

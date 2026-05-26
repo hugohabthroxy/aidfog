@@ -75,7 +75,13 @@ def load_trial(trial_dir: str, synthesize_if_empty: bool = True) -> TrialData:
         label = f["aidfog_replay/dots-imu/fog_label"][:].flatten()
 
     ai_mask = pt > 0
-    have_real_ai = ai_mask.any() and np.isfinite(logits[ai_mask]).all()
+    # "Real" AI data requires: rows exist, logits aren't NaN, AND the model
+    # actually fired at some point. An all-zero prediction stream from an
+    # earlier broken model is treated like no AI at all so the synthesis
+    # fallback kicks in (useful when GT > 0 but predictions are flat).
+    have_real_ai = (ai_mask.any()
+                    and np.isfinite(logits[ai_mask]).all()
+                    and prediction[ai_mask].any())
 
     if have_real_ai:
         pt = pt[ai_mask]

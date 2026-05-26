@@ -28,6 +28,10 @@ class _SliderSpec:
         return f"{v}{self.suffix}"
 
 
+_HYSTERESIS_SLIDERS = [
+    _SliderSpec("hyst_enter_thresh", "Enter threshold", 1, 120, ""),
+    _SliderSpec("hyst_exit_thresh",  "Exit threshold",  1, 60,  ""),
+]
 _FOUR_STATE_SLIDERS = [
     _SliderSpec("entry_consec",       "Entry consecutive",    1, 30,  ""),
     _SliderSpec("cueing_tail_frames", "Cueing tail",          0, 600, "s"),
@@ -79,12 +83,15 @@ class ControlPanel(QtWidgets.QWidget):
         layout.addWidget(preset_group)
 
         # --- Sliders grouped by purpose ---
+        self._hyst_box = self._make_slider_group(
+            "Hysteresis (upstream)", _HYSTERESIS_SLIDERS)
         self._four_state_box = self._make_slider_group(
             "4-state parameters", _FOUR_STATE_SLIDERS)
         self._defog_box = self._make_slider_group(
             "DeFOG parameters", _DEFOG_SLIDERS)
         self._metronome_box = self._make_slider_group(
             "Metronome", _METRONOME_SLIDERS)
+        layout.addWidget(self._hyst_box)
         layout.addWidget(self._four_state_box)
         layout.addWidget(self._defog_box)
         layout.addWidget(self._metronome_box)
@@ -155,6 +162,8 @@ class ControlPanel(QtWidgets.QWidget):
 _PRESETS: dict[str, dict] = {
     "Ours (4-state)": {
         "mode": FSMMode.FOUR_STATE,
+        "hyst_enter_thresh": 20,      # Alex's published defaults
+        "hyst_exit_thresh": 5,
         "entry_consec": 1,
         "cueing_tail_frames": 30,
         "refractory_frames": 60,
@@ -163,6 +172,8 @@ _PRESETS: dict[str, dict] = {
     },
     "DeFOG (10/5 s)": {
         "mode": FSMMode.DEFOG,
+        "hyst_enter_thresh": 20,
+        "hyst_exit_thresh": 5,
         "defog_cue_frames": 600,
         "defog_refractory_frames": 300,
         "volume": 80,
@@ -170,6 +181,8 @@ _PRESETS: dict[str, dict] = {
     },
     "Aggressive": {
         "mode": FSMMode.FOUR_STATE,
+        "hyst_enter_thresh": 5,       # fires fast — accepts more false positives
+        "hyst_exit_thresh": 12,
         "entry_consec": 1,
         "cueing_tail_frames": 60,
         "refractory_frames": 15,
@@ -178,6 +191,8 @@ _PRESETS: dict[str, dict] = {
     },
     "Conservative": {
         "mode": FSMMode.FOUR_STATE,
+        "hyst_enter_thresh": 40,      # waits for strong signal — may miss short freezes
+        "hyst_exit_thresh": 3,
         "entry_consec": 6,
         "cueing_tail_frames": 0,
         "refractory_frames": 300,

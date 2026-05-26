@@ -41,6 +41,12 @@ class DemoConfig:
 
     mode: FSMMode = FSMMode.FOUR_STATE
 
+    # Upstream hysteresis filter (Alex's HysteresisFilter). Applied to the
+    # raw probability stream live, so changing these thresholds reshapes the
+    # binary signal the FSM sees. Defaults match Alex's published values.
+    hyst_enter_thresh: int = 20       # ~333 ms @ 60 Hz consecutive ones to enter
+    hyst_exit_thresh: int = 5         # ~83 ms  @ 60 Hz consecutive zeros to exit
+
     # 4-state FSM
     entry_consec: int = 1
     cueing_tail_frames: int = 30      # ~500 ms @ 60 Hz

@@ -20,6 +20,7 @@ from demo.ble import BLEBridge
 from demo.controls import ControlPanel
 from demo.counters import Counters
 from demo.fsm import CueingFSM, DemoConfig
+from demo.hysteresis import HysteresisFilter
 from demo.replay import SAMPLE_RATE_HZ, list_trials, load_trial
 from demo.widgets import TimelinePanel
 
@@ -42,6 +43,10 @@ class DemoMainWindow(QtWidgets.QMainWindow):
         self._trial = load_trial(initial)
         self._config = DemoConfig()
         self._fsm = CueingFSM(self._config)
+        self._hyst = HysteresisFilter(
+            enter_thresh=self._config.hyst_enter_thresh,
+            exit_thresh=self._config.hyst_exit_thresh,
+        )
         self._counters = Counters()
         self._frame_idx = 0
         self._speed = speed
@@ -139,7 +144,10 @@ class DemoMainWindow(QtWidgets.QMainWindow):
         if i >= self._trial.n_samples:
             self._timer.stop()
             return
-        b = int(self._trial.binary[i])
+        # Hot-reload hysteresis thresholds and derive binary live from prob
+        self._hyst.enter_thresh = self._config.hyst_enter_thresh
+        self._hyst.exit_thresh = self._config.hyst_exit_thresh
+        b = int(self._hyst.step(float(self._trial.probability[i])))
         t = float(self._trial.t[i])
         gt = int(self._trial.fog_label[i])
         res = self._fsm.step(b)
@@ -180,6 +188,7 @@ class DemoMainWindow(QtWidgets.QMainWindow):
             from demo.fsm import Command
             self._ble.send(Command("stop"))
         self._fsm.reset()
+        self._hyst.reset()
         self._counters.reset()
         self._panel.reset()
         self._frame_idx = 0

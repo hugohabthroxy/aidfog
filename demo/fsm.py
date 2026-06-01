@@ -25,7 +25,7 @@ from enum import Enum
 
 class FSMMode(str, Enum):
     FOUR_STATE = "4-state"
-    DEFOG = "DeFOG-style"
+    DEFOG = "FSM B"
 
 
 class State(str, Enum):

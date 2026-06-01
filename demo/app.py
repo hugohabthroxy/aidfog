@@ -19,7 +19,7 @@ from PyQt6 import QtCore, QtWidgets
 from demo.ble import BLEBridge
 from demo.controls import ControlPanel
 from demo.counters import Counters
-from demo.fsm import CueingFSM, DemoConfig
+from demo.fsm import Command, CueingFSM, DemoConfig
 from demo.hysteresis import HysteresisFilter
 from demo.replay import SAMPLE_RATE_HZ, list_trials, load_trial, load_trial_from_npy
 from demo.widgets import TimelinePanel
@@ -59,6 +59,10 @@ class DemoMainWindow(QtWidgets.QMainWindow):
         self._speed = speed
         self._ble = ble
         self._is_playing = True
+        # Software metronome: re-fire START every N frames while cue_active.
+        # 60 frames @ 60 Hz = 1 Hz = 60 BPM (Bachlin 2010 RAS-for-FoG).
+        self._metronome_period_frames = 60
+        self._frames_since_last_tick = 0
 
         central = QtWidgets.QWidget()
         self.setCentralWidget(central)
@@ -169,6 +173,22 @@ class DemoMainWindow(QtWidgets.QMainWindow):
         cue_started = bool(res.command and res.command.action == "start")
         if res.command and self._ble:
             self._ble.send(res.command)
+        # Software metronome: while the FSM is cueing, re-fire START every
+        # period_frames so the firmware (configured single-shot per START)
+        # plays a tick at the chosen BPM. Reset the counter whenever the FSM
+        # itself emits a fresh START so we don't double-tick on transitions.
+        if cue_started:
+            self._frames_since_last_tick = 0
+        elif res.cue_active:
+            self._frames_since_last_tick += 1
+            if self._frames_since_last_tick >= self._metronome_period_frames:
+                if self._ble:
+                    self._ble.send(Command("start",
+                                           self._config.tone_id,
+                                           self._config.volume))
+                self._frames_since_last_tick = 0
+        else:
+            self._frames_since_last_tick = 0
         self._counters.update(t, gt, res.cue_active, cue_started)
         self._panel.append_frame(
             t=t,
@@ -203,8 +223,8 @@ class DemoMainWindow(QtWidgets.QMainWindow):
     def _restart(self):
         # Stop any in-flight cue before rewinding
         if self._ble:
-            from demo.fsm import Command
             self._ble.send(Command("stop"))
+        self._frames_since_last_tick = 0
         self._fsm.reset()
         self._hyst.reset()
         self._counters.reset()

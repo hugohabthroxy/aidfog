@@ -125,13 +125,16 @@ class BLEBridge:
             logger.warning("BLE send failed: %s", e)
 
     def send_metronome_config(self, duration_ms: int = 100,
-                              burst_count: int = 255,
-                              burst_gap_ms: int = 900) -> None:
-        """Push a CONFIGURE command so the firmware plays a metronome train, not
-        a single beep. Defaults are 1 Hz / 60 BPM (Bachlin 2010 RAS-for-FoG).
+                              burst_count: int = 1,
+                              burst_gap_ms: int = 0) -> None:
+        """Configure each START to fire exactly one tone, no firmware train.
 
-        Firmware retains config until the next CONFIGURE, so this only needs to
-        fire on startup — but exposing a re-push button is cheap insurance.
+        We tried the firmware's built-in metronome (burst_count=255, gap=900ms)
+        but it dropped the config between cues and collapsed back to a single
+        tone after the first cue. The demo now drives the metronome cadence
+        from software in app.py: re-fire START every 60 frames while the FSM
+        is in CUEING/CUEING_TAIL. Each START plays one tone end-to-end and
+        stops naturally, so software has full control of the tick rate.
         """
         if not self._connected:
             return

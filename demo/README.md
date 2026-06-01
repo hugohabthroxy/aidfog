@@ -54,7 +54,6 @@ degrades to visual-only without exiting.
   2. **Binary input** — the fixed post-hysteresis stream the FSM consumes.
   3. **FSM state** — IDLE / CUEING / CUEING_TAIL / REFRACTORY, with the
      CUEING rows highlighted in red where the speaker is on.
-  4. **‖acc‖** — single magnitude trace, confirms data is flowing.
 
 A header bar above shows running counters: episodes detected vs. total
 GT, cue event count, total cue time, mean latency from GT onset to cue.

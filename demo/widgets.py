@@ -1,11 +1,10 @@
 """pyqtgraph panels for the demo dashboard.
 
-`TimelinePanel` owns a scrolling 10-second window of four stacked plots:
+`TimelinePanel` owns a scrolling 10-second window of three stacked plots:
 
     1. Probability + GT shading + threshold reference lines
     2. Binary input (post-hysteresis, fixed)
     3. FSM state strip (coloured by state)
-    4. Acceleration magnitude (proof of life)
 
 Data is fed one frame at a time via `append_frame()`. The widget keeps an
 internal ring buffer; only the visible window is plotted on each update.
@@ -36,7 +35,7 @@ STATE_INDEX = {s: i for i, s in enumerate(
 
 
 class TimelinePanel(QtWidgets.QWidget):
-    """Four stacked scrolling plots, fed frame-by-frame."""
+    """Three stacked scrolling plots, fed frame-by-frame."""
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -56,7 +55,6 @@ class TimelinePanel(QtWidgets.QWidget):
         self._buf_binary = np.zeros(self._n, dtype=np.int8)
         self._buf_state_idx = np.zeros(self._n, dtype=np.int8)
         self._buf_state_cue = np.zeros(self._n, dtype=np.int8)
-        self._buf_acc = np.zeros(self._n, dtype=np.float64)
         self._head = 0
         self._filled = 0
 
@@ -97,11 +95,11 @@ class TimelinePanel(QtWidgets.QWidget):
         # Row 2 — FSM state (taller; the "main" panel)
         self._p_state = self._layout.addPlot(row=2, col=0)
         self._p_state.setLabel("left", "FSM\nstate")
+        self._p_state.setLabel("bottom", "time (s)")
         self._p_state.setYRange(-0.5, 3.5)
         self._p_state.getAxis("left").setTicks([[
             (0, "IDLE"), (1, "REFR"), (2, "TAIL"), (3, "CUE"),
         ]])
-        self._p_state.hideAxis("bottom")
         self._p_state.showGrid(x=True, y=True, alpha=0.2)
         self._curve_state = pg.PlotCurveItem(pen=pg.mkPen("#444", width=1.2))
         self._p_state.addItem(self._curve_state)
@@ -114,16 +112,8 @@ class TimelinePanel(QtWidgets.QWidget):
         )
         self._p_state.addItem(self._curve_cue_fill)
 
-        # Row 3 — Acceleration magnitude
-        self._p_acc = self._layout.addPlot(row=3, col=0)
-        self._p_acc.setLabel("left", "‖acc‖")
-        self._p_acc.setLabel("bottom", "time (s)")
-        self._p_acc.setMaximumHeight(90)
-        self._p_acc.showGrid(x=True, y=True, alpha=0.3)
-        self._curve_acc = self._p_acc.plot(pen=pg.mkPen("#2ca02c", width=1.0))
-
         # Link x-axes
-        for p in (self._p_bin, self._p_state, self._p_acc):
+        for p in (self._p_bin, self._p_state):
             p.setXLink(self._p_prob)
 
     def reset(self):
@@ -133,12 +123,11 @@ class TimelinePanel(QtWidgets.QWidget):
         self._buf_binary[:] = 0
         self._buf_state_idx[:] = 0
         self._buf_state_cue[:] = 0
-        self._buf_acc[:] = 0
         self._head = 0
         self._filled = 0
 
     def append_frame(self, t: float, prob: float, label: int, binary: int,
-                     state: State, cue_active: bool, acc: float):
+                     state: State, cue_active: bool):
         i = self._head
         self._buf_t[i] = t
         self._buf_prob[i] = prob
@@ -146,7 +135,6 @@ class TimelinePanel(QtWidgets.QWidget):
         self._buf_binary[i] = binary
         self._buf_state_idx[i] = STATE_INDEX[state]
         self._buf_state_cue[i] = 3 if cue_active else 0
-        self._buf_acc[i] = acc
         self._head = (i + 1) % self._n
         if self._filled < self._n:
             self._filled += 1
@@ -164,7 +152,6 @@ class TimelinePanel(QtWidgets.QWidget):
             binary = self._buf_binary[sl]
             state = self._buf_state_idx[sl]
             cue = self._buf_state_cue[sl]
-            acc = self._buf_acc[sl]
         else:
             idx = (np.arange(self._n) + self._head) % self._n
             t = self._buf_t[idx]
@@ -173,7 +160,6 @@ class TimelinePanel(QtWidgets.QWidget):
             binary = self._buf_binary[idx]
             state = self._buf_state_idx[idx]
             cue = self._buf_state_cue[idx]
-            acc = self._buf_acc[idx]
 
         self._curve_prob.setData(t, prob)
         # GT shading: a 0/1 curve filled down to 0; scale to plot top
@@ -184,7 +170,6 @@ class TimelinePanel(QtWidgets.QWidget):
         cue_f = cue.astype(float)
         cue_f[cue == 0] = np.nan
         self._curve_cue_fill.setData(t, cue_f, stepMode=False, connect="finite")
-        self._curve_acc.setData(t, acc)
 
         # Pin x-range to a trailing 10 s window
         x_max = float(t[-1])

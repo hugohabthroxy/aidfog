@@ -177,7 +177,6 @@ class DemoMainWindow(QtWidgets.QMainWindow):
             binary=b,
             state=res.state,
             cue_active=res.cue_active,
-            acc=float(self._trial.acc_magnitude[i]),
         )
         # Repaint at ~10 Hz to keep CPU low
         if i % 6 == 0:

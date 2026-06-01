@@ -123,6 +123,53 @@ def load_trial(trial_dir: str, synthesize_if_empty: bool = True) -> TrialData:
     )
 
 
+def load_trial_from_npy(raw_path: str,
+                        label_path: str | None = None,
+                        acc_path: str | None = None) -> TrialData:
+    """Load a trial from three sibling .npy files (raw / label / acc).
+
+    `raw` is pre-hysteresis probability — the demo's live HysteresisFilter
+    re-derives the binary each frame, so the `binary` field is left as zeros
+    (it's display-only; the FSM never reads it).
+
+    If `label_path` / `acc_path` are omitted they're derived by swapping
+    `_raw` → `_label` / `_acc` in the filename.
+    """
+    if label_path is None:
+        label_path = raw_path.replace("_raw", "_label")
+    if acc_path is None:
+        acc_path = raw_path.replace("_raw", "_acc")
+
+    prob = np.load(raw_path).astype(np.float32)
+    label = np.load(label_path).astype(np.int8)
+    acc = np.load(acc_path).astype(np.float32)
+
+    if not (len(prob) == len(label) == len(acc)):
+        raise ValueError(
+            f"length mismatch: raw={len(prob)} label={len(label)} acc={len(acc)}"
+        )
+    if acc.ndim != 2 or acc.shape[1] != 3:
+        raise ValueError(f"acc must be shape (N, 3); got {acc.shape}")
+
+    n = len(prob)
+    t = np.arange(n, dtype=np.float64) / SAMPLE_RATE_HZ
+    binary = np.zeros(n, dtype=np.int8)
+    acc_mag = np.linalg.norm(acc, axis=1)
+
+    name = os.path.splitext(os.path.basename(raw_path))[0]
+    if name.endswith("_raw"):
+        name = name[:-4]
+
+    return TrialData(
+        name=name,
+        t=t,
+        probability=prob,
+        binary=binary,
+        fog_label=label,
+        acc_magnitude=acc_mag,
+    )
+
+
 def _synthesise_from_label(label: np.ndarray, seed: int = 0) -> tuple[np.ndarray, np.ndarray]:
     """Dev-only: fabricate a TCN-shaped probability + post-hysteresis binary.
 

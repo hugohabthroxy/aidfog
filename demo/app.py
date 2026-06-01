@@ -21,26 +21,33 @@ from demo.controls import ControlPanel
 from demo.counters import Counters
 from demo.fsm import CueingFSM, DemoConfig
 from demo.hysteresis import HysteresisFilter
-from demo.replay import SAMPLE_RATE_HZ, list_trials, load_trial
+from demo.replay import SAMPLE_RATE_HZ, list_trials, load_trial, load_trial_from_npy
 from demo.widgets import TimelinePanel
 
 _SPEEDS = [0.5, 1.0, 2.0, 4.0]
 
 
 class DemoMainWindow(QtWidgets.QMainWindow):
-    def __init__(self, trials_root: str, initial_trial: str | None = None,
+    def __init__(self, trials_root: str | None = None,
+                 initial_trial: str | None = None,
+                 npy_path: str | None = None,
                  speed: float = 1.0, ble: BLEBridge | None = None):
         super().__init__()
         self.setWindowTitle("AidFOG Cueing Demo")
         self.resize(1280, 820)
 
         self._trials_root = trials_root
-        self._trial_paths = list_trials(trials_root)
-        if not self._trial_paths:
-            raise SystemExit(f"no trial folders with aidfog_ai.hdf5 in {trials_root}")
-        initial = initial_trial if initial_trial in self._trial_paths \
-            else self._trial_paths[0]
-        self._trial = load_trial(initial)
+        if npy_path:
+            self._trial_paths = [npy_path]
+            initial = npy_path
+            self._trial = load_trial_from_npy(npy_path)
+        else:
+            self._trial_paths = list_trials(trials_root or "")
+            if not self._trial_paths:
+                raise SystemExit(f"no trial folders with aidfog_ai.hdf5 in {trials_root}")
+            initial = initial_trial if initial_trial in self._trial_paths \
+                else self._trial_paths[0]
+            self._trial = load_trial(initial)
         self._config = DemoConfig()
         self._fsm = CueingFSM(self._config)
         self._hyst = HysteresisFilter(
@@ -199,7 +206,8 @@ class DemoMainWindow(QtWidgets.QMainWindow):
 
     def _on_trial_changed(self, idx: int):
         path = self._trial_picker.itemData(idx)
-        self._trial = load_trial(path)
+        self._trial = (load_trial_from_npy(path) if path.endswith(".npy")
+                       else load_trial(path))
         self._restart()
 
     def _on_speed_changed(self, idx: int):
@@ -226,6 +234,9 @@ def main():
                     help="Skip the BudsHandler subprocess (visual-only)")
     ap.add_argument("--ble-address", default=None,
                     help="Override PineBuds MAC (default: from demo.ble)")
+    ap.add_argument("--npy", default=None,
+                    help="Load a trial from a _raw.npy file (Alex's stream format). "
+                         "Sibling _label.npy and _acc.npy are auto-derived from the name.")
     args = ap.parse_args()
 
     app = QtWidgets.QApplication(sys.argv)
@@ -236,8 +247,8 @@ def main():
             else BLEBridge()
         ble.start(timeout_s=8.0)
 
-    w = DemoMainWindow(args.trials, initial_trial=args.trial,
-                       speed=args.speed, ble=ble)
+    w = DemoMainWindow(trials_root=args.trials, initial_trial=args.trial,
+                       npy_path=args.npy, speed=args.speed, ble=ble)
     w.show()
     sys.exit(app.exec())
 

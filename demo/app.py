@@ -60,8 +60,8 @@ class DemoMainWindow(QtWidgets.QMainWindow):
         self._ble = ble
         self._is_playing = True
         # Software metronome: re-fire START every N frames while cue_active.
-        # 60 frames @ 60 Hz = 1 Hz = 60 BPM (Bachlin 2010 RAS-for-FoG).
-        self._metronome_period_frames = 60
+        # Period derived from DemoConfig.metronome_bpm on each frame so the
+        # Tempo slider takes effect live without restarting the trial.
         self._frames_since_last_tick = 0
 
         central = QtWidgets.QWidget()
@@ -180,8 +180,9 @@ class DemoMainWindow(QtWidgets.QMainWindow):
         if cue_started:
             self._frames_since_last_tick = 0
         elif res.cue_active:
+            period = max(1, round(SAMPLE_RATE_HZ * 60 / max(1, self._config.metronome_bpm)))
             self._frames_since_last_tick += 1
-            if self._frames_since_last_tick >= self._metronome_period_frames:
+            if self._frames_since_last_tick >= period:
                 if self._ble:
                     self._ble.send(Command("start",
                                            self._config.tone_id,

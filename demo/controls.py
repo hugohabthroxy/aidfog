@@ -42,8 +42,9 @@ _DEFOG_SLIDERS = [
     _SliderSpec("defog_refractory_frames", "FSM A refractory",   0,   1200, "s"),
 ]
 _METRONOME_SLIDERS = [
-    _SliderSpec("volume",  "Volume",   0,   100, "%"),
-    _SliderSpec("tone_id", "Tone ID",  0,   5,   ""),
+    _SliderSpec("volume",        "Volume",   0,   100, "%"),
+    _SliderSpec("tone_id",       "Tone ID",  0,   5,   ""),
+    _SliderSpec("metronome_bpm", "Tempo",    30,  180, " BPM"),
 ]
 
 

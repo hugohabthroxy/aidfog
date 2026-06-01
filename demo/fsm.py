@@ -59,6 +59,7 @@ class DemoConfig:
     # Metronome (sent with every START command)
     volume: int = 80
     tone_id: int = 0
+    metronome_bpm: int = 60           # software-driven tempo, Bachlin 2010 default
 
 
 @dataclass

@@ -148,6 +148,11 @@ class BudsHandler:
 
         connected = await self._buds_backend.connect()
         if connected:
+            # Push metronome params (60 BPM, Bachlin 2010) to firmware once on
+            # connect; subsequent START/STOP commands use this configured train.
+            # NOTE: firmware retention across mid-session reconnects is unverified;
+            # if cueing goes silent after a drop, also re-send configure here.
+            await self._buds_backend.configure(CueingConfig())
             logger.info("BudsHandler ready, signaling pipeline")
             self._is_ready_event.set()
 

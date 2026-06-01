@@ -72,6 +72,11 @@ class BudsHandler:
 
             action = cmd.get("action", "").lower()
             if action == "start":
+                # Re-apply the metronome config on every START. Empirically the
+                # firmware drops CueingConfig on STOP (or some other trigger),
+                # so without this each cue after the first collapses back to
+                # the single-tone default. Cost: one extra ~10 ms BLE write.
+                await self._buds_backend.configure(CueingConfig())
                 await self._buds_backend.start_cue(
                     tone_id=cmd.get("tone_id", 0),
                     volume=cmd.get("volume", 80),

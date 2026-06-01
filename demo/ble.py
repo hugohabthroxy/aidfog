@@ -124,6 +124,27 @@ class BLEBridge:
         except Exception as e:
             logger.warning("BLE send failed: %s", e)
 
+    def send_metronome_config(self, duration_ms: int = 100,
+                              burst_count: int = 255,
+                              burst_gap_ms: int = 900) -> None:
+        """Push a CONFIGURE command so the firmware plays a metronome train, not
+        a single beep. Defaults are 1 Hz / 60 BPM (Bachlin 2010 RAS-for-FoG).
+
+        Firmware retains config until the next CONFIGURE, so this only needs to
+        fire on startup — but exposing a re-push button is cheap insurance.
+        """
+        if not self._connected:
+            return
+        try:
+            self._cmd_queue.put_nowait({
+                "action": "configure",
+                "duration_ms": int(duration_ms),
+                "burst_count": int(burst_count),
+                "burst_gap_ms": int(burst_gap_ms),
+            })
+        except Exception as e:
+            logger.warning("BLE configure send failed: %s", e)
+
     def shutdown(self, timeout_s: float = 3.0) -> None:
         if self._proc is None:
             return

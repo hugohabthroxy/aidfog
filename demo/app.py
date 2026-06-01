@@ -84,6 +84,14 @@ class DemoMainWindow(QtWidgets.QMainWindow):
         self._restart_btn.clicked.connect(self._restart)
         bar.addWidget(self._restart_btn)
 
+        self._metronome_btn = QtWidgets.QPushButton("♩ Push metronome")
+        self._metronome_btn.setToolTip(
+            "Re-send the 60 BPM metronome config to the earbuds (100 ms beep + "
+            "900 ms gap × 255). Use if the buds are stuck playing single beeps.")
+        self._metronome_btn.clicked.connect(self._push_metronome)
+        self._metronome_btn.setEnabled(bool(ble and ble.connected))
+        bar.addWidget(self._metronome_btn)
+
         bar.addWidget(QtWidgets.QLabel("Speed:"))
         self._speed_combo = QtWidgets.QComboBox()
         for s in _SPEEDS:
@@ -189,6 +197,10 @@ class DemoMainWindow(QtWidgets.QMainWindow):
             self._timer.stop()
             self._play_btn.setText("▶ Play")
 
+    def _push_metronome(self):
+        if self._ble:
+            self._ble.send_metronome_config()
+
     def _restart(self):
         # Stop any in-flight cue before rewinding
         if self._ble:
@@ -246,6 +258,10 @@ def main():
         ble = BLEBridge(address=args.ble_address) if args.ble_address \
             else BLEBridge()
         ble.start(timeout_s=8.0)
+        # Force the firmware into 60 BPM metronome mode regardless of any stale
+        # config it may have retained from a previous session. Cheap, idempotent.
+        if ble.connected:
+            ble.send_metronome_config()
 
     w = DemoMainWindow(trials_root=args.trials, initial_trial=args.trial,
                        npy_path=args.npy, speed=args.speed, ble=ble)

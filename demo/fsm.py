@@ -24,8 +24,8 @@ from enum import Enum
 
 
 class FSMMode(str, Enum):
-    FOUR_STATE = "4-state"
-    DEFOG = "FSM B"
+    FOUR_STATE = "FSM B"
+    DEFOG = "FSM A"
 
 
 class State(str, Enum):

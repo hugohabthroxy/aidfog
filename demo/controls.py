@@ -38,8 +38,8 @@ _FOUR_STATE_SLIDERS = [
     _SliderSpec("refractory_frames",  "Refractory",           0, 600, "s"),
 ]
 _DEFOG_SLIDERS = [
-    _SliderSpec("defog_cue_frames",        "FSM B cue duration", 60,  1200, "s"),
-    _SliderSpec("defog_refractory_frames", "FSM B refractory",   0,   1200, "s"),
+    _SliderSpec("defog_cue_frames",        "FSM A cue duration", 60,  1200, "s"),
+    _SliderSpec("defog_refractory_frames", "FSM A refractory",   0,   1200, "s"),
 ]
 _METRONOME_SLIDERS = [
     _SliderSpec("volume",  "Volume",   0,   100, "%"),
@@ -64,8 +64,8 @@ class ControlPanel(QtWidgets.QWidget):
         # --- Mode toggle ---
         mode_group = QtWidgets.QGroupBox("Controller")
         mode_layout = QtWidgets.QHBoxLayout(mode_group)
-        self._mode_4state = QtWidgets.QRadioButton("4-state (ours)")
-        self._mode_defog = QtWidgets.QRadioButton("FSM B")
+        self._mode_4state = QtWidgets.QRadioButton("FSM B (ours)")
+        self._mode_defog = QtWidgets.QRadioButton("FSM A (DeFOG)")
         self._mode_4state.setChecked(config.mode == FSMMode.FOUR_STATE)
         self._mode_defog.setChecked(config.mode == FSMMode.DEFOG)
         self._mode_4state.toggled.connect(self._on_mode_changed)
@@ -86,9 +86,9 @@ class ControlPanel(QtWidgets.QWidget):
         self._hyst_box = self._make_slider_group(
             "Hysteresis (upstream)", _HYSTERESIS_SLIDERS)
         self._four_state_box = self._make_slider_group(
-            "4-state parameters", _FOUR_STATE_SLIDERS)
+            "FSM B parameters", _FOUR_STATE_SLIDERS)
         self._defog_box = self._make_slider_group(
-            "FSM B parameters", _DEFOG_SLIDERS)
+            "FSM A parameters", _DEFOG_SLIDERS)
         self._metronome_box = self._make_slider_group(
             "Metronome", _METRONOME_SLIDERS)
         layout.addWidget(self._hyst_box)
@@ -160,7 +160,7 @@ class ControlPanel(QtWidgets.QWidget):
 # Canonical configurations the demo can switch to with one click.
 # Frame numbers assume 60 Hz sampling.
 _PRESETS: dict[str, dict] = {
-    "Ours (4-state)": {
+    "Ours (FSM B)": {
         "mode": FSMMode.FOUR_STATE,
         "hyst_enter_thresh": 20,      # Alex's published defaults
         "hyst_exit_thresh": 5,
@@ -170,7 +170,7 @@ _PRESETS: dict[str, dict] = {
         "volume": 80,
         "tone_id": 0,
     },
-    "FSM B (10/5 s)": {
+    "FSM A (10/5 s)": {
         "mode": FSMMode.DEFOG,
         "hyst_enter_thresh": 20,
         "hyst_exit_thresh": 5,

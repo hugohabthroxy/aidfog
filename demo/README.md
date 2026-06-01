@@ -17,7 +17,7 @@ demo/
   widgets.py   Four-row scrolling timeline (pyqtgraph)
   controls.py  Sliders, mode toggle, preset buttons
   counters.py  Running episode / cue / latency stats
-  fsm.py       4-state and DeFOG-style cueing FSMs
+  fsm.py       FSM B (4-state, ours) and FSM A (DeFOG-style) cueing FSMs
   replay.py    HDF5 trial loader
   ble.py       BudsHandler subprocess bridge
   cli_smoke.py Headless validation of the data path
@@ -62,14 +62,15 @@ GT, cue event count, total cue time, mean latency from GT onset to cue.
 
 Preset buttons load canonical configs in one click:
 
-  - **Ours (4-state)** — 1-frame entry, 500 ms tail, 1 s refractory.
-  - **DeFOG (10/5 s)** — 10 s fixed cue, 5 s refractory (Zoetewei 2021).
+  - **Ours (FSM B)** — 1-frame entry, 500 ms tail, 1 s refractory.
+  - **FSM A (10/5 s)** — 10 s fixed cue, 5 s refractory (Zoetewei 2021).
   - **Aggressive** — long tail, short refractory.
   - **Conservative** — slower entry, no tail, longer refractory.
 
 Or drag any slider to make a custom config. The mode radio buttons
-switch between the 4-state and DeFOG-style controllers; switching mid-
-trial resets the FSM to IDLE on the next frame.
+switch between the FSM B (4-state, ours) and FSM A (DeFOG-style)
+controllers; switching mid-trial resets the FSM to IDLE on the next
+frame.
 
 ## Notes
 
